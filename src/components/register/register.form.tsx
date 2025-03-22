@@ -1,29 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { z } from "zod";
-import { login } from "@/server/auth-action";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { register } from "@/lib/auth/auth.action";
+import { Register, registerSchema } from "@/lib/auth/auth.schema";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-// Define the validation schema
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
 
-type LoginFormValues = z.infer<typeof loginSchema>;
-
-export default function LoginForm() {
-  const [formValues, setFormValues] = useState<LoginFormValues>({
+export default function RegisterForm() {
+  const [formValues, setFormValues] = useState<Register>({
+    name: "",
     email: "",
     password: "",
+    confirmPassword: ""
   });
-  const [errors, setErrors] = useState<Partial<Record<keyof LoginFormValues, string>>>({});
+  const [errors, setErrors] = useState<Partial<Record<keyof Register, string>>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
@@ -32,7 +27,7 @@ export default function LoginForm() {
     setFormValues(prev => ({ ...prev, [name]: value }));
     
     // Clear the error for this field when user starts typing
-    if (errors[name as keyof LoginFormValues]) {
+    if (errors[name as keyof Register]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
@@ -43,13 +38,13 @@ export default function LoginForm() {
     
     try {
       // Validate the form data
-      const result = loginSchema.safeParse(formValues);
+      const result = registerSchema.safeParse(formValues);
       
       if (!result.success) {
         // Extract and format validation errors
-        const formattedErrors: Partial<Record<keyof LoginFormValues, string>> = {};
+        const formattedErrors: Partial<Record<keyof Register, string>> = {};
         result.error.errors.forEach(error => {
-          const path = error.path[0] as keyof LoginFormValues;
+          const path = error.path[0] as keyof Register;
           formattedErrors[path] = error.message;
         });
         
@@ -58,32 +53,29 @@ export default function LoginForm() {
         return;
       }
       
-      // Call the login server action with form data
-      const response = await login({
-        email: formValues.email,
-        password: formValues.password
-      });
+      // Call the register server action with form data
+      const response = await register(formValues);
       
       if (response.success) {
-        // Redirect to dashboard on success
-        router.push("/dashboard");
+        // Redirect to login page on success
+        router.push("/login");
       } else {
         // Handle server-side validation errors
         if (Array.isArray(response.error)) {
-          const formattedErrors: Partial<Record<keyof LoginFormValues, string>> = {};
+          const formattedErrors: Partial<Record<keyof Register, string>> = {};
           response.error.forEach(error => {
-            const path = error.path[0] as keyof LoginFormValues;
+            const path = error.path[0] as keyof Register;
             formattedErrors[path] = error.message;
           });
           setErrors(formattedErrors);
         } else {
-          setErrors({ email: "Invalid email or password" });
+          setErrors({ email: response.error as string });
         }
       }
       
     } catch (error) {
-      console.error("Login failed:", error);
-      setErrors({ email: "Login failed. Please try again." });
+      console.error("Registration failed:", error);
+      setErrors({ email: "Registration failed. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
@@ -92,13 +84,28 @@ export default function LoginForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
-        <CardTitle className="text-2xl">Login</CardTitle>
+        <CardTitle className="text-2xl">Create an account</CardTitle>
         <CardDescription>
-          Enter your credentials to access your account
+          Enter your information to create an account
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input
+              id="name"
+              name="name"
+              placeholder="John Doe"
+              value={formValues.name}
+              onChange={handleChange}
+              aria-invalid={!!errors.name}
+            />
+            {errors.name && (
+              <p className="text-sm text-destructive">{errors.name}</p>
+            )}
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -130,16 +137,31 @@ export default function LoginForm() {
             )}
           </div>
           
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <Input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="password"
+              value={formValues.confirmPassword}
+              onChange={handleChange}
+              aria-invalid={!!errors.confirmPassword}
+            />
+            {errors.confirmPassword && (
+              <p className="text-sm text-destructive">{errors.confirmPassword}</p>
+            )}
+          </div>
+          
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Logging in..." : "Login"}
+            {isSubmitting ? "Creating account..." : "Register"}
           </Button>
         </form>
       </CardContent>
       <CardFooter className="flex justify-center">
         <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link href="/register" className="text-primary hover:underline">
-            Register
+          Already have an account?{" "}
+          <Link href="/login" className="text-primary hover:underline">
+            Login
           </Link>
         </p>
       </CardFooter>

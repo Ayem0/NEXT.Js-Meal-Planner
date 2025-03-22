@@ -1,4 +1,4 @@
-import { AnimatedText } from '@/components/animated-text';
+import { AnimatedText } from '@/components/ui/animated-text';
 import { Button } from '@/components/ui/button';
 import {
   Card,
